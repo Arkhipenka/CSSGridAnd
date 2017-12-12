@@ -1,0 +1,20 @@
+body{
+	background: #3D3D3D;
+}
+#gameName{
+	color: #fff;
+	font-family: Corier;
+	font-weight: bold;
+	font-weight: 24px;
+	text-align: center;
+}
+#map{
+	display: block;
+	background: #fff;
+	margin: 30px auto 0px;
+}
+#player, #enemy{
+	display: block;
+	margin: -500px auto 0px;
+}
+
