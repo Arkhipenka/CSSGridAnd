@@ -9,6 +9,9 @@ var ctxPl;
 var emenyCvs;
 var ctxEnemy;
 
+var stats;
+var ctxStats;
+
 var drawBtn;
 var clearBtn;
 
@@ -16,15 +19,31 @@ var gameWidth = 800;
 var gameHeight = 500;
 
 var background = new Image();
-background.src = 'bg/bg.png';
+background.src = 'img/bg.png';
+
+var background1 = new Image();
+background1.src = 'img/bg.png';
 
 var tiles = new Image();
-tiles.src = 'bg/player.png';
+tiles.src = 'img/player.png';
 
-var player = new Player;
-var enemy = new Enemy;
+var player; 
+var enemies = [];
 
 var isPlaying;
+var health;
+
+var mapX = 0;
+var map1X = gameWidth;
+
+var mouseX;
+var mouseY;
+
+var mouseControl = true;
+
+var spawnInterval;
+var spawnTime = 5000;
+var spawnAmount = 20;
 
 var requstAnimFrame = window.requstAnimationFrame ||
 						window.webkitRequestAnimationFrame ||
@@ -44,6 +63,10 @@ function init(){
 
 	enemyCvs = document.getElementById("enemy");
 	ctxEnemy = enemyCvs.getContext("2d");
+
+	stats = document.getElementById("stats");
+	ctxStats = stats.getContext("2d");
+	
 	
 	pl.width = gameWidth;
 	pl.height = gameHeight;
@@ -51,18 +74,69 @@ function init(){
 	enemyCvs.width = gameWidth;
 	enemyCvs.height = gameHeight;
 
+	stats.width = gameWidth;
+	stats.height = gameHeight;
+
+	ctxStats.fillStyle = "#3D3D3D";
+	ctxStats.font ="bold 15pt Arial";
+
 	drawBtn = document.getElementById("drawBtn");
 	clearBtn = document.getElementById("clearBtn");
 
 	drawBtn.addEventListener("click", drawRect, false);
 	clearBtn.addEventListener("click", clearRect, false);
 
-	drawBg();
-	starLoop();
+	player = new Player;
 
+	resetHealth();
+
+	
+	starLoop();
+	
+	document.addEventListener("mousemove", mouseMove, false);
+	document.addEventListener("click", mouuseClick, false);
 	document.addEventListener("keydown", checkKeyDown, false);
 	document.addEventListener("keyup", checkKeyUp, false);
 }
+
+function mouseMove(e){
+	if (!mouseControl){ 
+		return;
+	}
+	mouseX = e.pageX - map.offsetLeft;;
+	mouseY = e.pageY - map.offsetTop;
+	player.drawX = mouseX-player.width/2;
+	player.drawY = mouseY-player.width/2;
+	document.getElementById("gameName").innerHTML = "X: "+mouseX+" Y: "+mouseY;
+}
+
+function mouuseClick(e){
+	if (!mouseControl){
+		return;
+	}
+
+	document.getElementById("gameName").innerHTML = "Clicked"
+}
+
+function resetHealth(){
+	health = 100;
+}
+
+function spawnEnemy(count){
+	for(var i = 0; i < count; i++) {
+		enemies[i] = new Enemy();
+	}
+}
+
+function startCreatingEnemies(){
+	stopCreatingEnemies();
+	spawnInterval = setInterval(function(){spawnEnemy(spawnAmount)},spawnTime);
+}
+
+function stopCreatingEnemies(){
+	clearInterval(spawnInterval);
+}
+
 
 function loop(){
 	if(isPlaying){
@@ -75,6 +149,7 @@ function loop(){
 function starLoop(){
 	isPlaying = true;
 	loop();
+	startCreatingEnemies();
 }
 
 function stopLoop(){
@@ -84,12 +159,31 @@ function stopLoop(){
 
 function draw(){
 	player.draw();
-	enemy.draw();
+
+	clearCtxEnemy();
+
+	for(var i = 0; i < enemies.length; i++){
+		enemies[i].draw();
+	}
 }
 
 function update(){
+	moveBg();
+	drawBg();
 	player.update();
-	enemy.update();
+	updateStats();
+
+	for(var i = 0; i < enemies.length; i++){
+		enemies[i].update();
+	}
+}
+
+function moveBg(){
+	var vel =4;
+	mapX -= 4;
+	map1X -= 4;
+	if (mapX=gameWidth<0) mapX = gameWidth-5;
+	if (map1X=gameWidth<0) map1X = gameWidth-5;
 }
 
 function Player(){
@@ -112,7 +206,7 @@ function Player(){
 function Enemy(){
 	this.srcX = 0;
 	this.srcY = 70;
-	this.drawX = Math.floor(Math.random() * 10) + gameWidth;
+	this.drawX = Math.floor(Math.random() * gameWidth) + gameWidth;
 	this.drawY = Math.floor(Math.random() * gameHeight);
 	this.width = 78;
 	this.height = 44;
@@ -121,16 +215,18 @@ function Enemy(){
 }
 
 Enemy.prototype.draw = function(){
-	clearCtxEnemy();
+	
 	ctxEnemy.drawImage(tiles,this.srcX,this.srcY,this.width,this.height,
 		this.drawX,this.drawY,this.width,this.height)
 }
 Enemy.prototype.update = function(){
-	this.drawX -= 1;
-	if(this.drawX<0){
-		this.drawX = Math.floor(Math.random() * 10) + gameWidth;
-		this.drawY = Math.floor(Math.random() * gameHeight);
+	this.drawX -= 7;
+	if(this.drawX + this.width < 0){
+		this.destroy();
 	}
+}
+Enemy.prototype.destroy = function(){
+	enemies.splice(enemies.indexOf(this), 1);
 }
 
 Player.prototype.draw = function(){
@@ -140,11 +236,26 @@ Player.prototype.draw = function(){
 }
 
 Player.prototype.update = function(){
+if (health <= 0) {
+	resetHealth();
+}
+
 	if (this.drawX < 0) this.drawX = 0;
 	if (this.drawX > gameWidth - this.width) this.drawX = gameWidth - this.width;
 	if (this.drawY < 0) this.drawY = 0;
 	if (this.drawY > gameHeight - this.height) this.drawY = gameHeight - this.height;
+	
+	for(var i = 0; i < enemies.length; i++){
+		if(this.drawX >= enemies[i].drawX &&
+			this.drawY >= enemies[i].drawY &&
+			this.drawX <= enemies[i].drawX + enemies[i].width &&
+			this.drawY <= enemies[i].drawY + enemies[i].height){
+			health--;
+		}
+	}
+
 	this.chooseDir();
+
 }
 
 Player.prototype.chooseDir = function(){
@@ -222,8 +333,16 @@ function clearCtxEnemy(){
 	ctxEnemy.clearRect(0,0,gameWidth,gameHeight);
 }
 
+function updateStats(){
+	ctxStats.clearRect(0,0,gameWidth,gameHeight);
+	ctxStats.fillText("Health: " + health, 20, 20);
+}
+
 function drawBg(){
+	ctxMap.clearRect(0,0,gameWidth,gameHeight);
 	ctxMap.drawImage(background,0,0,800, 500,
-		0,0,gameWidth,gameHeight)
+		mapX,0,gameWidth,gameHeight);
+	ctxMap.drawImage(background1,0,0,800, 500,
+		map1X,0,gameWidth,gameHeight)
 }
 
